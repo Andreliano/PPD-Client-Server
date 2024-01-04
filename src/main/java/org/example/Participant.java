@@ -36,10 +36,8 @@ public class Participant implements Serializable {
 
     @Override
     public String toString() {
-        return "Participant{" +
-                "idParticipant=" + idParticipant +
-                ", idCountry=" + idCountry +
-                ", points=" + points +
-                '}';
+        return  idParticipant +
+                " " + idCountry +
+                " " + points;
     }
 }

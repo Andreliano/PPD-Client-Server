@@ -1,8 +1,9 @@
 package org.example;
 
 import java.util.List;
+import java.util.Queue;
 
-public class ReaderThread implements Runnable{
+public class ReaderThread implements Runnable {
 
     private final List<Participant> participantList;
     private final MyBlockingQueue myBlockingQueue;
@@ -14,9 +15,9 @@ public class ReaderThread implements Runnable{
 
     @Override
     public void run() {
-        for(var i : participantList){
+        for (var participant : participantList) {
             try {
-                myBlockingQueue.add(i);
+                myBlockingQueue.add(participant);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

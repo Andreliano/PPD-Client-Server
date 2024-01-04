@@ -3,7 +3,7 @@ package org.example;
 import java.util.Objects;
 import java.util.Set;
 
-public class WriterThread extends Thread{
+public class WriterThread extends Thread {
 
     private final MyBlockingQueue queue;
     private final MyList<Participant> resultList;
@@ -23,7 +23,7 @@ public class WriterThread extends Thread{
             throw new RuntimeException(e);
         }
 
-        while (participant != null) {
+        while (queue.size() > 0) {
             Node<Participant> currentNode = resultList.getHead().next;
             boolean gasit = false;
             while (currentNode != resultList.getTail()) {
@@ -51,7 +51,7 @@ public class WriterThread extends Thread{
             }
             try {
                 participant = queue.poll();
-                System.out.println(participant);
+//                System.out.println(participant);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

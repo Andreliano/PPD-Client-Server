@@ -84,10 +84,10 @@ class MyList<T> {
         Node<T> current = head.next;
         int nr = 0;
         while (current != tail) {
-            nr++;
+            System.out.println(current.data);
             current = current.next;
         }
-        System.out.println(nr);
+        System.out.println();
     }
 
     public void sort(Comparator<T> comparator) {

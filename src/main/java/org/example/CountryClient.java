@@ -50,6 +50,15 @@ public class CountryClient extends Thread {
                 clientSocket.close();
                 clientPort++;
             }
+            clientSocket = new Socket();
+            clientSocket.bind(new InetSocketAddress(clientPort));
+            clientSocket.connect(new InetSocketAddress(serverName, serverPort));
+            outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+            outputStream.writeObject("GATA");
+            outputStream.flush();
+            outputStream.close();
+            clientSocket.close();
+            clientPort++;
 
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
