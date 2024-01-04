@@ -1,3 +1,5 @@
+package org.example;
+
 import java.util.Comparator;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;

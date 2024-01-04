@@ -4,7 +4,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
 
@@ -21,6 +25,11 @@ public class Server {
         try (ServerSocket serverSocket = new ServerSocket(serverPort)) {
             ObjectInputStream inputStream;
             Object participants;
+            ExecutorService executorReaders = Executors.newFixedThreadPool(pReaders);
+            WriterThread[] writerThreads = new WriterThread[pWriters];
+            MyBlockingQueue myBlockingQueue = new MyBlockingQueue();
+            MyList<Participant> participantMyList = new MyList<>();
+            Set<Long> listOfIdThatAreEliminated = new HashSet<>();
             while (true) {
                 try (Socket clientSocket = serverSocket.accept()) {
                     // if the port is between 10000 and 19999 => client from country 1
@@ -31,16 +40,34 @@ public class Server {
                     participants = inputStream.readObject();
                     if (participants instanceof List) {
                         List<Participant> subParticipants = (List<Participant>) participants;
-                        System.out.println(subParticipants);
+//                        System.out.println(subParticipants);
+                        ReaderThread readerThread = new ReaderThread(subParticipants, myBlockingQueue);
+                        executorReaders.execute(readerThread);
+
+
+                        for (int i = 0; i < pWriters; i++) {
+                            writerThreads[i] = new WriterThread(myBlockingQueue, participantMyList, listOfIdThatAreEliminated);
+                            writerThreads[i].start();
+                        }
+
+                        for (int i = 0; i < pWriters; i++) {
+                            try {
+                                writerThreads[i].join();
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+
+                        System.out.println(participantMyList);
                     }
-                }
-                catch (IOException e) {
+                } catch (IOException e) {
                     System.out.println(e.getMessage());
                     break;
                 } catch (ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
             }
+            executorReaders.shutdown();
         }
     }
 
