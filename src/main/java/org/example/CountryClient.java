@@ -16,8 +16,6 @@ public class CountryClient extends Thread {
 
     private final int countryIndex;
 
-    private int totalParticipantsPerProblem;
-
     public CountryClient(int countryIndex) {
         this.countryIndex = countryIndex;
     }
@@ -29,6 +27,8 @@ public class CountryClient extends Thread {
         deltaX = 1;
         try {
             List<Participant> participants = getAllParticipantsByCountry();
+            // Constants.totalParticipantsPerCountry1.put((long) countryIndex, participants.size());
+            //System.out.println("Map1->" + countryIndex + ": " + Constants.totalParticipantsPerCountry1.get((long) countryIndex));
             List<Participant> subParticipants;
             int start;
             int end;
@@ -36,6 +36,17 @@ public class CountryClient extends Thread {
             Socket clientSocket;
             ObjectOutputStream outputStream;
             ArrayList<Participant> serializableSubList;
+
+            clientSocket = new Socket();
+            clientSocket.bind(new InetSocketAddress(clientPort));
+            clientSocket.connect(new InetSocketAddress(serverName, serverPort));
+            outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+            outputStream.writeObject(participants.size());
+            outputStream.flush();
+            Thread.sleep(deltaX * 1000L);
+            outputStream.close();
+            clientSocket.close();
+            clientPort++;
 
             for (start = 0; start < size; start += 20) {
                 clientSocket = new Socket();

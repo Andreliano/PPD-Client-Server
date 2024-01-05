@@ -13,7 +13,7 @@ public class MyBlockingQueue {
     private final Condition notEmpty;
 
     private final Condition notFull;
-    private static final int MAX_CAPACITY = 5000;
+    private static final int MAX_CAPACITY = 100;
 
     public MyBlockingQueue() {
         participants = new ArrayDeque<>();

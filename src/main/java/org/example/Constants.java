@@ -1,7 +1,7 @@
 package org.example;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -13,12 +13,17 @@ public class Constants {
 
     public static MyBlockingQueue myBlockingQueue = new MyBlockingQueue();
 
-    public static MyList<Participant> ranking = new MyList<>();
+    public static final List<Participant> ranking = new LinkedList<>();
 
     public static Set<Long> disqualifiedCompetitors = new HashSet<>();
 
-    public static AtomicInteger counter = new AtomicInteger(0);
-
     public static final AtomicLong lastUpdateTime = new AtomicLong(0);
+
+    public static final Map<Long, Integer> totalParticipantsPerCountry1 = Collections.synchronizedMap(new HashMap<>());
+
+    public static final Map<Long, Integer> totalParticipantsPerCountry2 = Collections.synchronizedMap(new HashMap<>());
+
+    public static final AtomicInteger numberOfFinishedConsumers = new AtomicInteger(0);
+
 
 }

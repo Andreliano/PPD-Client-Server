@@ -17,7 +17,7 @@ public class Server {
 
     private static boolean ok = false;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
         initialiseServer(args);
         ExecutorService threadPoolReaders = Executors.newFixedThreadPool(pReaders);
         WriterThread[] writerThreads = new WriterThread[pWriters];
@@ -46,24 +46,59 @@ public class Server {
                     if (participants instanceof List) {
                         List<Participant> subParticipants = (List<Participant>) participants;
                         setCountryIdForParticipantsSubListByPort(subParticipants, port);
-                        ReaderThread readerThread = new ReaderThread(subParticipants);
+                        ReaderThread readerThread = new ReaderThread(subParticipants, port / 10000);
                         threadPoolReaders.submit(readerThread);
                     } else if (participants instanceof String) {
                         if ("REQUEST".equals(participants.toString())) {
-                            Constants.counter.getAndIncrement();
-                            if (needToRecalculateScores()) {
-                                Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
-                                System.out.println(futureScores.get());
-                            }
+//                            if (needToRecalculateScores()) {
+//                                Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
+//                                System.out.println(futureScores.get());
+//                            }
                         }
+                    } else if (participants instanceof Integer) {
+                        Constants.totalParticipantsPerCountry1.put((long) (port / 10000), (Integer) participants);
                     }
 
                 } catch (IOException e) {
                     System.out.println(e.getMessage());
-                } catch (ClassNotFoundException | InterruptedException | ExecutionException e) {
+                } catch (ClassNotFoundException e) {
                     throw new RuntimeException(e);
                 }
+
+                if (Constants.numberOfFinishedConsumers.get() == pWriters) {
+
+                    threadPoolReaders.shutdown();
+                    try {
+                        if (!threadPoolReaders.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                            threadPoolReaders.shutdownNow();
+                        }
+                    } catch (InterruptedException e) {
+                        threadPoolReaders.shutdownNow();
+                    }
+
+                    for (int i = 0; i < pWriters; i++) {
+                        writerThreads[i].join();
+                    }
+
+                    if (needToRecalculateScores()) {
+                        Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
+                        System.out.println(futureScores.get());
+                        Future<List<Participant>> futureRanking = sortParticipantsAsync();
+                        for(Participant participant : futureRanking.get()) {
+                            System.out.println(participant);
+                        }
+                    }
+
+//                    Constants.ranking.sort(Comparator.comparing(Participant::getPoints).reversed()
+//                            .thenComparing(Participant::getIdParticipant));
+//                    for(Participant participant : Constants.ranking) {
+//                        System.out.println(participant);
+//                    }
+
+                }
+
             }
+
         }
     }
 
@@ -79,6 +114,12 @@ public class Server {
         return executor.submit(task);
     }
 
+    private static Future<List<Participant>> sortParticipantsAsync() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Callable<List<Participant>> task = Server::sortParticipants;
+        return executor.submit(task);
+    }
+
     private static boolean needToRecalculateScores() {
         long currentTime = System.currentTimeMillis();
         return (currentTime - Constants.lastUpdateTime.get()) > deltaT;
@@ -87,21 +128,36 @@ public class Server {
     private static Map<Long, Integer> calculateTotalScores() {
         Map<Long, Integer> countryScores = new HashMap<>();
 
-        Node<Participant> current = Constants.ranking.getHead().next;
+//        Node<Participant> current = Constants.ranking.getHead().next;
+//
+//        while (current != Constants.ranking.getTail()) {
+//            Participant participant = current.data;
+//            if (!Constants.disqualifiedCompetitors.contains(participant.getIdParticipant())) {
+//                long countryId = participant.getIdCountry();
+//                int newScore = countryScores.getOrDefault(countryId, 0) + participant.getPoints();
+//                countryScores.put(countryId, newScore);
+//            }
+//            current = current.next;
+//        }
 
-        while (current != Constants.ranking.getTail()) {
-            Participant participant = current.data;
+        for (Participant participant : Constants.ranking) {
             if (!Constants.disqualifiedCompetitors.contains(participant.getIdParticipant())) {
                 long countryId = participant.getIdCountry();
                 int newScore = countryScores.getOrDefault(countryId, 0) + participant.getPoints();
                 countryScores.put(countryId, newScore);
             }
-            current = current.next;
         }
+
 
         Constants.lastUpdateTime.set(System.currentTimeMillis());
 
         return countryScores;
+    }
+
+    private static List<Participant> sortParticipants() {
+        Constants.ranking.sort(Comparator.comparing(Participant::getPoints).reversed()
+                .thenComparing(Participant::getIdParticipant));
+        return Constants.ranking;
     }
 
     private static void initialiseServer(String[] args) {
