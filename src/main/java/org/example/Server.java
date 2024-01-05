@@ -1,5 +1,6 @@
 package org.example;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -10,7 +11,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-
+import java.util.concurrent.*;
 public class Server {
 
     private static int pReaders;
@@ -18,6 +19,7 @@ public class Server {
     private static int pWriters;
 
     private static int deltaT; // ms
+
     private final static AtomicInteger nr = new AtomicInteger(0);
 
     private static Comparator<Participant> getComparator() {
@@ -35,9 +37,8 @@ public class Server {
             ObjectInputStream inputStream;
             Object participants;
             WriterThread[] writerThreads = new WriterThread[pWriters];
-            MyBlockingQueue myBlockingQueue = new MyBlockingQueue();
 //            QueueByMe myBlockingQueue = new QueueByMe();
-            MyList<Participant> participantMyList = new MyList<>();
+
             Set<Long> listOfIdThatAreEliminated = new HashSet<>();
             while (true) {
                 try (Socket clientSocket = serverSocket.accept()) {
@@ -48,48 +49,43 @@ public class Server {
                     inputStream = new ObjectInputStream(clientSocket.getInputStream());
                     participants = inputStream.readObject();
                     if (participants instanceof List) {
-                        List<Participant> subParticipants = (List<Participant>) participants;
-//                        System.out.println(subParticipants);
-                        ReaderThread readerThread = new ReaderThread(subParticipants, myBlockingQueue);
+                        Constants.participantsList = (List<Participant>) participants;
+                        ReaderThread readerThread = new ReaderThread();
                         executorReaders.submit(readerThread);
 
 
                         for (int i = 0; i < pWriters; i++) {
-                            writerThreads[i] = new WriterThread(myBlockingQueue, participantMyList, listOfIdThatAreEliminated);
+                            writerThreads[i] = new WriterThread();
                             writerThreads[i].start();
                         }
 
-                    } else {
-                        String message = (String) participants;
+                    } else if(participants instanceof String message){
                         if(message.equals("clasament")) {
 //                        nr.incrementAndGet();
-                            Map<Integer, Integer> countryRating = calculateCountryRating(participantMyList);
-                            List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.entrySet());
-                            list.sort(Map.Entry.comparingByValue());
-                            ArrayList<String> serializableSubList = new ArrayList<>();
-                            for (var i : list) {
-                                serializableSubList.add(i.getKey() + ":" + i.getValue());
+                            if(needToRecalculateScores()) {
+                                Future<Map<Integer, Integer>> countryRating = calculateTotalScoresAsync();
+                                List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.get().entrySet());
+                                list.sort(Map.Entry.comparingByValue());
+                                Constants.serializableSubList = new ArrayList<>();
+                                for (var i : list) {
+                                    Constants.serializableSubList.add(i.getKey() + ":" + i.getValue());
+                                }
                             }
                             try (Socket cs = new Socket()) {
-                                System.out.println("adress: " + clientSocket.getInetAddress() + " port: " + clientSocket.getPort());
                                 cs.connect(new InetSocketAddress(clientSocket.getInetAddress(), clientSocket.getPort()));
                                 ObjectOutputStream outputStream = new ObjectOutputStream(cs.getOutputStream());
-                                outputStream.writeObject(serializableSubList);
+                                outputStream.writeObject(Constants.serializableSubList);
                                 outputStream.flush();
                             } catch (IOException e) {
                                 throw new RuntimeException(e);
                             }
                         }else{
-                            nr.incrementAndGet();
+                            Constants.counter.incrementAndGet();
                         }
                     }
-                    if (nr.get() == 4) {
-                        Map<Integer, Integer> countryRating = calculateCountryRating(participantMyList);
-                        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.entrySet());
-                        list.sort(Map.Entry.comparingByValue());
-                        for (var participant : list) {
-                            System.out.println(participant);
-                        }
+                    if (Constants.counter.get() == 4) {
+                        writeToFile(Constants.ranking, Constants.ParticipantRankingFile);
+                        writeToFile(Constants.serializableSubList, Constants.CountryRankingFile);
                         executorReaders.shutdown();
                         for (int i = 0; i < pWriters; i++) {
                             try {
@@ -103,18 +99,23 @@ public class Server {
                 } catch (IOException e) {
                     System.out.println(e.getMessage());
                     break;
-                } catch (ClassNotFoundException e) {
+                } catch (ClassNotFoundException | ExecutionException | InterruptedException e) {
                     throw new RuntimeException(e);
                 }
             }
         }
     }
+    private static Future<Map<Integer, Integer>> calculateTotalScoresAsync() {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Callable<Map<Integer, Integer>> task = Server::calculateCountryRating;
+        return executor.submit(task);
+    }
 
-    private static Map<Integer, Integer> calculateCountryRating(MyList<Participant> myList) {
+    private static Map<Integer, Integer> calculateCountryRating() {
         Map<Integer, Integer> countryRating = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            Node<Participant> currentNode = myList.getHead().next;
-            while (currentNode != myList.getTail()) {
+            Node<Participant> currentNode = Constants.ranking.getHead().next;
+            while (currentNode != Constants.ranking.getTail()) {
                 if (currentNode.data.getIdCountry() == i) {
                     if (countryRating.get(i) == null) {
                         countryRating.put(i, currentNode.data.getPoints());
@@ -130,6 +131,40 @@ public class Server {
         return countryRating;
     }
 
+    private static void writeToFile(MyList<Participant> myList, String fileName) {
+        try {
+            FileWriter fileWriter = new FileWriter(fileName);
+            Node<Participant> currentNode = myList.getHead().next;
+
+            while (currentNode != myList.getTail()) {
+                fileWriter.write(currentNode.data.toString() + "\n");
+                currentNode = currentNode.next;
+            }
+
+            fileWriter.close();
+        } catch (IOException e) {
+            System.out.println("Eroare la crearea fișierului " + fileName);
+            e.printStackTrace();
+        }
+    }
+    private static void writeToFile(List<String> myList, String fileName) {
+        try {
+            FileWriter fileWriter = new FileWriter(fileName);
+            for(var i : myList){
+                fileWriter.write(i + "\n");
+            }
+
+            fileWriter.close();
+        } catch (IOException e) {
+            System.out.println("Eroare la crearea fișierului " + fileName);
+            e.printStackTrace();
+        }
+    }
+
+    private static boolean needToRecalculateScores() {
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - Constants.lastUpdateTime.get()) > deltaT;
+    }
     private static void initialiseServer(String[] args) {
         // In script: Server p_r p_w delta_t
         // pReaders = Integer.parseInt(args[0]);

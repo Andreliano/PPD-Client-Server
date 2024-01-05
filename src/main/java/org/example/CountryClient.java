@@ -55,7 +55,6 @@ public class CountryClient extends Thread {
                 if(end >= participantsPerProblem) {
                     clientSocket = new Socket();
                     clientSocket.bind(new InetSocketAddress(clientPort));
-                    System.out.println("Port: " + clientPort);
                     clientSocket.connect(new InetSocketAddress(serverName, serverPort));
                     outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
                     outputStream.writeObject("clasament");
@@ -72,6 +71,7 @@ public class CountryClient extends Thread {
                                 for (var i : list) {
                                     System.out.println(i);
                                 }
+                                System.out.println();
                             }
                         }
                     }
