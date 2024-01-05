@@ -2,12 +2,11 @@ package org.example;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,6 +19,7 @@ public class Server {
 
     private static int deltaT; // ms
     private final static AtomicInteger nr = new AtomicInteger(0);
+
     private static Comparator<Participant> getComparator() {
         return Comparator
                 .comparing(Participant::getPoints)
@@ -58,15 +58,38 @@ public class Server {
                             writerThreads[i] = new WriterThread(myBlockingQueue, participantMyList, listOfIdThatAreEliminated);
                             writerThreads[i].start();
                         }
-//                        participantMyList.sort(getComparator());
-//                        participantMyList.printList();
+
+                    } else {
+                        String message = (String) participants;
+                        if(message.equals("clasament")) {
+//                        nr.incrementAndGet();
+                            Map<Integer, Integer> countryRating = calculateCountryRating(participantMyList);
+                            List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.entrySet());
+                            list.sort(Map.Entry.comparingByValue());
+                            ArrayList<String> serializableSubList = new ArrayList<>();
+                            for (var i : list) {
+                                serializableSubList.add(i.getKey() + ":" + i.getValue());
+                            }
+                            try (Socket cs = new Socket()) {
+                                System.out.println("adress: " + clientSocket.getInetAddress() + " port: " + clientSocket.getPort());
+                                cs.connect(new InetSocketAddress(clientSocket.getInetAddress(), clientSocket.getPort()));
+                                ObjectOutputStream outputStream = new ObjectOutputStream(cs.getOutputStream());
+                                outputStream.writeObject(serializableSubList);
+                                outputStream.flush();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }else{
+                            nr.incrementAndGet();
+                        }
                     }
-                    else{
-                        nr.incrementAndGet();
-                        System.out.println(nr.get());
-                    }
-                    if(nr.get() == 4){
-                        System.out.println("AM TERMINAT");
+                    if (nr.get() == 4) {
+                        Map<Integer, Integer> countryRating = calculateCountryRating(participantMyList);
+                        List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.entrySet());
+                        list.sort(Map.Entry.comparingByValue());
+                        for (var participant : list) {
+                            System.out.println(participant);
+                        }
                         executorReaders.shutdown();
                         for (int i = 0; i < pWriters; i++) {
                             try {
@@ -75,7 +98,6 @@ public class Server {
                                 throw new RuntimeException(e);
                             }
                         }
-                        participantMyList.printList();
                         break;
                     }
                 } catch (IOException e) {
@@ -86,6 +108,26 @@ public class Server {
                 }
             }
         }
+    }
+
+    private static Map<Integer, Integer> calculateCountryRating(MyList<Participant> myList) {
+        Map<Integer, Integer> countryRating = new HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            Node<Participant> currentNode = myList.getHead().next;
+            while (currentNode != myList.getTail()) {
+                if (currentNode.data.getIdCountry() == i) {
+                    if (countryRating.get(i) == null) {
+                        countryRating.put(i, currentNode.data.getPoints());
+                    } else {
+                        int updatedPoints = countryRating.get(i) + currentNode.data.getPoints();
+                        countryRating.put(i, updatedPoints);
+                    }
+                }
+
+                currentNode = currentNode.next;
+            }
+        }
+        return countryRating;
     }
 
     private static void initialiseServer(String[] args) {

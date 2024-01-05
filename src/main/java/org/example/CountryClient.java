@@ -2,9 +2,11 @@ package org.example;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class CountryClient extends Thread {
 
@@ -34,6 +36,7 @@ public class CountryClient extends Thread {
             Socket clientSocket;
             ObjectOutputStream outputStream;
             ArrayList<Participant> serializableSubList;
+            int participantsPerProblem = size / 10;
 
             for (start = 0; start < size; start += 20) {
                 clientSocket = new Socket();
@@ -49,6 +52,30 @@ public class CountryClient extends Thread {
                 outputStream.close();
                 clientSocket.close();
                 clientPort++;
+                if(end >= participantsPerProblem) {
+                    clientSocket = new Socket();
+                    clientSocket.bind(new InetSocketAddress(clientPort));
+                    System.out.println("Port: " + clientPort);
+                    clientSocket.connect(new InetSocketAddress(serverName, serverPort));
+                    outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                    outputStream.writeObject("clasament");
+                    outputStream.flush();
+                    outputStream.close();
+                    clientSocket.close();
+                    clientPort++;
+                    try (ServerSocket serverSocket = new ServerSocket(clientPort - 1)) {
+                        try (Socket cc = serverSocket.accept()) {
+                            ObjectInputStream inputStream = new ObjectInputStream(cc.getInputStream());
+                            Object response = inputStream.readObject();
+                            if (response instanceof List) {
+                                List<String> list = (List<String>) response;
+                                for (var i : list) {
+                                    System.out.println(i);
+                                }
+                            }
+                        }
+                    }
+                }
             }
             clientSocket = new Socket();
             clientSocket.bind(new InetSocketAddress(clientPort));
@@ -58,9 +85,8 @@ public class CountryClient extends Thread {
             outputStream.flush();
             outputStream.close();
             clientSocket.close();
-            clientPort++;
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException | ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
