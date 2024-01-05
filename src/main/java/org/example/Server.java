@@ -65,7 +65,7 @@ public class Server {
                             if(needToRecalculateScores()) {
                                 Future<Map<Integer, Integer>> countryRating = calculateTotalScoresAsync();
                                 List<Map.Entry<Integer, Integer>> list = new ArrayList<>(countryRating.get().entrySet());
-                                list.sort(Map.Entry.comparingByValue());
+                                list.sort(Map.Entry.<Integer, Integer>comparingByValue().reversed());
                                 Constants.serializableSubList = new ArrayList<>();
                                 for (var i : list) {
                                     Constants.serializableSubList.add(i.getKey() + ":" + i.getValue());
