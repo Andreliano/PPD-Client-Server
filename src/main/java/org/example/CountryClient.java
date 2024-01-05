@@ -16,6 +16,8 @@ public class CountryClient extends Thread {
 
     private final int countryIndex;
 
+    private int totalParticipantsPerProblem;
+
     public CountryClient(int countryIndex) {
         this.countryIndex = countryIndex;
     }
@@ -51,6 +53,17 @@ public class CountryClient extends Thread {
                 clientPort++;
             }
 
+            clientSocket = new Socket();
+            clientSocket.bind(new InetSocketAddress(clientPort));
+            clientSocket.connect(new InetSocketAddress(serverName, serverPort));
+            outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+            outputStream.writeObject("REQUEST");
+            outputStream.flush();
+            Thread.sleep(deltaX * 1000L);
+            outputStream.close();
+            clientSocket.close();
+
+
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -75,6 +88,7 @@ public class CountryClient extends Thread {
                     participant.setPoints(Integer.parseInt(participantInformation[2]));
                     participants.add(participant);
                 }
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

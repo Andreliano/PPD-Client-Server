@@ -1,20 +1,8 @@
+package org.example;
+
 import java.util.Comparator;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-class Node<T> {
-    T data;
-    Node<T> next;
-    Lock lock;
-
-    public Node(T data) {
-        this.data = data;
-        this.next = null;
-        this.lock = new ReentrantLock();
-    }
-}
-
-class MyList<T> {
+public class MyList<T> {
     private final Node<T> head;
     private final Node<T> tail;
 
@@ -80,12 +68,10 @@ class MyList<T> {
 
     public void printList() {
         Node<T> current = head.next;
-        int nr = 0;
         while (current != tail) {
-            nr++;
+            System.out.println(current.data.toString());
             current = current.next;
         }
-        System.out.println(nr);
     }
 
     public void sort(Comparator<T> comparator) {
