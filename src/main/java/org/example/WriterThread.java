@@ -8,37 +8,35 @@ public class WriterThread extends Thread {
     public void run() {
         Participant participant;
         while (Constants.myBlockingQueue.size() > 0 || !isReadingFinished()) {
-            try {
-                participant = Constants.myBlockingQueue.poll();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            participant = Constants.myBlockingQueue.poll();
 
-            synchronized (Constants.ranking) {
-                boolean found = false;
-                Iterator<Participant> iterator = Constants.ranking.iterator();
-                while (iterator.hasNext()) {
-                    Participant par = iterator.next();
-                    if (participant.getIdParticipant().equals(par.getIdParticipant())) {
-                        if (participant.getPoints() == -1) {
-                            Constants.disqualifiedCompetitors.add(par.getIdParticipant());
-                            iterator.remove();
-                        } else {
-                            if (!Constants.disqualifiedCompetitors.contains(par.getIdParticipant())) {
-                                par.setPoints(par.getPoints() + participant.getPoints());
+            if (participant != null) {
+                synchronized (Constants.ranking) {
+                    boolean found = false;
+                    Iterator<Participant> iterator = Constants.ranking.iterator();
+                    while (iterator.hasNext()) {
+                        Participant par = iterator.next();
+                        if (participant.getIdParticipant().equals(par.getIdParticipant())) {
+                            if (participant.getPoints() == -1) {
+                                Constants.disqualifiedCompetitors.add(par.getIdParticipant());
+                                iterator.remove();
+                            } else {
+                                if (!Constants.disqualifiedCompetitors.contains(par.getIdParticipant())) {
+                                    par.setPoints(par.getPoints() + participant.getPoints());
+                                }
                             }
+                            found = true;
+                            break;
                         }
-                        found = true;
-                        break;
                     }
-                }
 
-                if (!found) {
-                    if (participant.getPoints() == -1) {
-                        Constants.disqualifiedCompetitors.add(participant.getIdParticipant());
-                    }
-                    if (!Constants.disqualifiedCompetitors.contains(participant.getIdParticipant())) {
-                        Constants.ranking.add(participant);
+                    if (!found) {
+                        if (participant.getPoints() == -1) {
+                            Constants.disqualifiedCompetitors.add(participant.getIdParticipant());
+                        }
+                        if (!Constants.disqualifiedCompetitors.contains(participant.getIdParticipant())) {
+                            Constants.ranking.add(participant);
+                        }
                     }
                 }
             }
@@ -86,11 +84,12 @@ public class WriterThread extends Thread {
 
     private boolean isReadingFinished() {
         if (bothMapsContainsAllCountriesIds()) {
-           for (long countryId : Constants.totalParticipantsPerCountry1.keySet()) {
-               if(!Constants.totalParticipantsPerCountry1.get(countryId).equals(Constants.totalParticipantsPerCountry2.get(countryId))){
-                   return false;
-               }
-           }
+            for (long countryId : Constants.totalParticipantsPerCountry1.keySet()) {
+                if (!Constants.totalParticipantsPerCountry1.get(countryId).equals(Constants.totalParticipantsPerCountry2.get(countryId))) {
+                    return false;
+                }
+            }
+            Constants.isReadingFinished.set(true);
             return true;
         }
 
@@ -100,7 +99,7 @@ public class WriterThread extends Thread {
     private boolean bothMapsContainsAllCountriesIds() {
         long i;
         for (i = 1; i <= 5; i++) {
-            if(!Constants.totalParticipantsPerCountry1.containsKey(i) || !Constants.totalParticipantsPerCountry2.containsKey(i)) {
+            if (!Constants.totalParticipantsPerCountry1.containsKey(i) || !Constants.totalParticipantsPerCountry2.containsKey(i)) {
                 return false;
             }
         }

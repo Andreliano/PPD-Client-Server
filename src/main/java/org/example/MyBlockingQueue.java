@@ -38,7 +38,7 @@ public class MyBlockingQueue {
     public Participant poll() throws InterruptedException {
         lock.lock();
         try {
-            while (participants.isEmpty()) {
+            while (!Constants.isReadingFinished.get() && participants.isEmpty()) {
                 notEmpty.await();
             }
             Participant participant = participants.poll();

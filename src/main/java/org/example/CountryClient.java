@@ -2,9 +2,11 @@ package org.example;
 
 import java.io.*;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class CountryClient extends Thread {
 
@@ -36,6 +38,7 @@ public class CountryClient extends Thread {
             Socket clientSocket;
             ObjectOutputStream outputStream;
             ArrayList<Participant> serializableSubList;
+            int participantsPerProblem = size / 10;
 
             clientSocket = new Socket();
             clientSocket.bind(new InetSocketAddress(clientPort));
@@ -62,22 +65,66 @@ public class CountryClient extends Thread {
                 outputStream.close();
                 clientSocket.close();
                 clientPort++;
+
+                if (end >= participantsPerProblem) {
+                    clientSocket = new Socket();
+                    clientSocket.bind(new InetSocketAddress(clientPort));
+                    clientSocket.connect(new InetSocketAddress(serverName, serverPort));
+                    outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                    outputStream.writeObject("CURRENT_SCORES");
+                    outputStream.flush();
+                    Thread.sleep(deltaX * 1000L);
+                    clientPort++;
+                    ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+                    Object response = inputStream.readObject();
+                    if (response instanceof Map) {
+                        Map<Long, Integer> currentCountryScores = (Map<Long, Integer>) response;
+                        System.out.println("Country" + countryIndex + ":" + currentCountryScores);
+                    }
+                    outputStream.close();
+                    clientSocket.close();
+                }
             }
 
             clientSocket = new Socket();
             clientSocket.bind(new InetSocketAddress(clientPort));
             clientSocket.connect(new InetSocketAddress(serverName, serverPort));
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-            outputStream.writeObject("REQUEST");
+            outputStream.writeObject("FINAL_SCORES");
             outputStream.flush();
             Thread.sleep(deltaX * 1000L);
-            outputStream.close();
-            clientSocket.close();
+
+            while (true) {
+                try {
+                    ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+                    Object scoresResponse = inputStream.readObject();
+                    Object rankingResponse = inputStream.readObject();
+
+                    if (scoresResponse instanceof Map) {
+                        Map<Long, Integer> scores = (Map<Long, Integer>) scoresResponse;
+                        System.out.println("FINAL SCORES " + countryIndex + ":" + scores);
+                    }
+
+                    if (rankingResponse instanceof List) {
+                        List<Participant> ranking = (List<Participant>) rankingResponse;
+                        System.out.println("FINAL RANKING " + countryIndex + ":" + ranking);
+                    }
+
+                    outputStream.close();
+                    clientSocket.close();
+
+                    break;
+                } catch (Exception ignored) {
+
+                }
+            }
 
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException |
+                 ClassNotFoundException e) {
             throw new RuntimeException(e);
         }
+
     }
 
     private List<Participant> getAllParticipantsByCountry() throws FileNotFoundException {
@@ -95,8 +142,8 @@ public class CountryClient extends Thread {
                     String[] participantInformation = line.split(" ");
                     participant = new Participant();
                     participant.setIdParticipant(Long.parseLong(participantInformation[0]));
-                    participant.setIdCountry(Long.parseLong(participantInformation[1]));
-                    participant.setPoints(Integer.parseInt(participantInformation[2]));
+                    participant.setPoints(Integer.parseInt(participantInformation[1]));
+                    participant.setIdCountry(Long.parseLong(participantInformation[2]));
                     participants.add(participant);
                 }
 

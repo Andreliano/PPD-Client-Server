@@ -1,11 +1,12 @@
 package org.example;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
 
@@ -15,7 +16,9 @@ public class Server {
 
     private static int deltaT; // ms
 
-    private static boolean ok = false;
+    private static boolean found1 = false;
+
+    private static boolean found2 = false;
 
     public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
         initialiseServer(args);
@@ -34,7 +37,7 @@ public class Server {
             }
 
             while (true) {
-                try (Socket clientSocket = serverSocket.accept()) {
+                Socket clientSocket = serverSocket.accept();
                     // if the port is between 10000 and 19999 => client from country 1
                     // if the port is between 20000 and 29999 => client from country 2
                     // ...
@@ -49,24 +52,29 @@ public class Server {
                         ReaderThread readerThread = new ReaderThread(subParticipants, port / 10000);
                         threadPoolReaders.submit(readerThread);
                     } else if (participants instanceof String) {
-                        if ("REQUEST".equals(participants.toString())) {
-//                            if (needToRecalculateScores()) {
-//                                Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
-//                                System.out.println(futureScores.get());
-//                            }
+                        if ("CURRENT_SCORES".equals(participants.toString())) {
+                            Map<Long, Integer> scores;
+                            if (needToRecalculateScores()) {
+                                Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
+                                scores = futureScores.get();
+                            } else {
+                                scores = Constants.currentCountryScores;
+                            }
+                            ObjectOutputStream outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                            outputStream.writeObject(scores);
+                            outputStream.flush();
+
+                        } else if ("FINAL_SCORES".equals(participants.toString())) {
+                            System.out.println("PORT: " + port);
+                            Constants.clientsOutputStreams.add(clientSocket.getOutputStream());
                         }
                     } else if (participants instanceof Integer) {
                         Constants.totalParticipantsPerCountry1.put((long) (port / 10000), (Integer) participants);
                     }
 
-                } catch (IOException e) {
-                    System.out.println(e.getMessage());
-                } catch (ClassNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
+                if (Constants.numberOfFinishedConsumers.get() == pWriters && !found1) {
 
-                if (Constants.numberOfFinishedConsumers.get() == pWriters) {
-
+                    found1 = true;
                     threadPoolReaders.shutdown();
                     try {
                         if (!threadPoolReaders.awaitTermination(800, TimeUnit.MILLISECONDS)) {
@@ -80,25 +88,37 @@ public class Server {
                         writerThreads[i].join();
                     }
 
-                    if (needToRecalculateScores()) {
-                        Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
-                        System.out.println(futureScores.get());
-                        Future<List<Participant>> futureRanking = sortParticipantsAsync();
-                        for(Participant participant : futureRanking.get()) {
-                            System.out.println(participant);
+                    Future<Map<Long, Integer>> futureScores = calculateTotalScoresAsync();
+                    Future<List<Participant>> futureRanking = sortParticipantsAsync();
+                    System.out.println("FINAL_SCORES: " + futureScores.get());
+                    writeCountriesScoresToFile(futureScores.get());
+                    writeFinalRankingToFile(futureRanking.get());
+                    Constants.finalInformationAreWritingToFile.set(true);
+                }
+
+                if(!found2 && Constants.clientsOutputStreams.size() == 5 && Constants.finalInformationAreWritingToFile.get()) {
+                    found2 = true;
+                    Map<Long, Integer> scores = readCountriesScoresFromFile();
+                    List<Participant> ranking = readFinalRankingFromFile();
+                    for (OutputStream stream : Constants.clientsOutputStreams) {
+                        try {
+                            ObjectOutputStream outputStream = new ObjectOutputStream(stream);
+                            outputStream.writeObject(scores);
+                            outputStream.flush();
+                            outputStream.writeObject(ranking);
+                            outputStream.flush();
+                            outputStream.close();
+
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
                         }
                     }
-
-//                    Constants.ranking.sort(Comparator.comparing(Participant::getPoints).reversed()
-//                            .thenComparing(Participant::getIdParticipant));
-//                    for(Participant participant : Constants.ranking) {
-//                        System.out.println(participant);
-//                    }
-
                 }
 
             }
 
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -169,6 +189,88 @@ public class Server {
         pReaders = 4;
         pWriters = 4;
         deltaT = 2;
+    }
+
+    private static void writeCountriesScoresToFile(Map<Long, Integer> scores) {
+        try {
+            File file = new File("src\\main\\resources\\CountriesScores.txt");
+            FileWriter fileWriter = new FileWriter(file);
+            BufferedWriter writer = new BufferedWriter(fileWriter);
+
+            for (Map.Entry<Long, Integer> score : scores.entrySet()) {
+                writer.write(score.getKey() + " " + score.getValue());
+                writer.newLine();
+            }
+            writer.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeFinalRankingToFile(List<Participant> ranking) {
+        try {
+            File file = new File("src\\main\\resources\\Ranking.txt");
+            FileWriter fileWriter = new FileWriter(file);
+            BufferedWriter writer = new BufferedWriter(fileWriter);
+
+            for (Participant participant : ranking) {
+                writer.write(participant.getIdParticipant() + " " + participant.getPoints() + " " + participant.getIdCountry());
+                writer.newLine();
+            }
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static Map<Long, Integer> readCountriesScoresFromFile() {
+        String filename = "src\\main\\resources\\CountriesScores.txt";
+        Map<Long, Integer> scores = new HashMap<>();
+        try {
+            FileReader fileReader = new FileReader(filename);
+            try (BufferedReader br
+                         = new BufferedReader(fileReader)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String[] countriesScores = line.split(" ");
+                    scores.put(Long.parseLong(countriesScores[0]), Integer.parseInt(countriesScores[1]));
+                }
+
+                return scores;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private static List<Participant> readFinalRankingFromFile() {
+        String filename = "src\\main\\resources\\Ranking.txt";
+        List<Participant> ranking = new LinkedList<>();
+        try {
+            FileReader fileReader = new FileReader(filename);
+            try (BufferedReader br
+                         = new BufferedReader(fileReader)) {
+                Participant participant;
+                String line;
+                while ((line = br.readLine()) != null) {
+                    String[] participantInformation = line.split(" ");
+                    participant = new Participant();
+                    participant.setIdParticipant(Long.parseLong(participantInformation[0]));
+                    participant.setPoints(Integer.parseInt(participantInformation[1]));
+                    participant.setIdCountry(Long.parseLong(participantInformation[2]));
+                    ranking.add(participant);
+                }
+
+                return ranking;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
 }

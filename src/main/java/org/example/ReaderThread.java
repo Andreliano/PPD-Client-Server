@@ -17,11 +17,7 @@ public class ReaderThread extends Thread {
     @Override
     public void run() {
         for (Participant participant : participants) {
-            try {
-                Constants.myBlockingQueue.add(participant);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            Constants.myBlockingQueue.add(participant);
         }
 
         Constants.totalParticipantsPerCountry2.put(countryId, Constants.totalParticipantsPerCountry2.getOrDefault(countryId, 0) + participants.size());

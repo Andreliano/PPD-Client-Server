@@ -1,6 +1,9 @@
 package org.example;
 
+import java.io.OutputStream;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -11,7 +14,7 @@ public class Constants {
 
     }
 
-    public static MyBlockingQueue myBlockingQueue = new MyBlockingQueue();
+    public static Queue<Participant> myBlockingQueue = new ArrayBlockingQueue<>(400);
 
     public static final List<Participant> ranking = new LinkedList<>();
 
@@ -25,5 +28,12 @@ public class Constants {
 
     public static final AtomicInteger numberOfFinishedConsumers = new AtomicInteger(0);
 
+    public static final AtomicBoolean isReadingFinished = new AtomicBoolean(false);
+
+    public static final Map<Long, Integer> currentCountryScores = Collections.synchronizedMap(new HashMap<>());
+
+    public static final List<OutputStream> clientsOutputStreams = Collections.synchronizedList(new ArrayList<>());
+
+    public static final AtomicBoolean finalInformationAreWritingToFile = new AtomicBoolean(false);
 
 }
