@@ -3,7 +3,6 @@ package org.example;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,7 +15,7 @@ public class Constants {
 
     public static Queue<Participant> myBlockingQueue = new ArrayBlockingQueue<>(400);
 
-    public static final List<Participant> ranking = new LinkedList<>();
+    public static final SharedLinkedList ranking = new SharedLinkedList();
 
     public static Set<Long> disqualifiedCompetitors = new HashSet<>();
 

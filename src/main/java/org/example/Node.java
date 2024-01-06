@@ -13,4 +13,19 @@ public class Node<T> {
         this.next = null;
         this.lock = new ReentrantLock();
     }
+
+    public Node<T> getNext() {
+        return this.next;
+    }
+    public Lock getLock() {
+        return lock;
+    }
+
+    public void setNext(Node<T> next) {
+        this.next = next;
+    }
+
+    public T getData() {
+        return data;
+    }
 }

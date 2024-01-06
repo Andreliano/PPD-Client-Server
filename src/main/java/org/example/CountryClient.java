@@ -142,8 +142,8 @@ public class CountryClient extends Thread {
                     String[] participantInformation = line.split(" ");
                     participant = new Participant();
                     participant.setIdParticipant(Long.parseLong(participantInformation[0]));
-                    participant.setPoints(Integer.parseInt(participantInformation[1]));
-                    participant.setIdCountry(Long.parseLong(participantInformation[2]));
+                    participant.setPoints(Integer.parseInt(participantInformation[2]));
+                    participant.setIdCountry(Long.parseLong(participantInformation[1]));
                     participants.add(participant);
                 }
 
