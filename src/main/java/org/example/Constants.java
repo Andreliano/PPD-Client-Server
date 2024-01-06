@@ -26,7 +26,7 @@ public class Constants {
 
     public static final AtomicLong lastUpdateTime = new AtomicLong(0);
 
-    public static String CountryRankingFile = "C:\\Users\\vladb\\Desktop\\Facultate\\an3\\programare paralela si distributiva\\java\\lab6\\src\\main\\resources\\out\\CountryRanking.txt";
-    public static String ParticipantRankingFile = "C:\\Users\\vladb\\Desktop\\Facultate\\an3\\programare paralela si distributiva\\java\\lab6\\src\\main\\resources\\out\\ParticipantsRanking.txt";
+    public static String CountryRankingFile = "C:\\Users\\vladb\\Desktop\\Facultate\\an3\\programare paralela si distributiva\\java\\tema6\\src\\main\\resources\\out\\CountryRanking.txt";
+    public static String ParticipantRankingFile = "C:\\Users\\vladb\\Desktop\\Facultate\\an3\\programare paralela si distributiva\\java\\tema6\\src\\main\\resources\\out\\ParticipantRanking.txt";
 
 }

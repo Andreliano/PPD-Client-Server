@@ -21,7 +21,7 @@ public class WriterThread extends Thread {
                 if (Objects.equals(currentNode.data.getIdParticipant(), participant.getIdParticipant())) {
                     currentNode.lock.lock();
                     try {
-                        if (participant.getPoints() > 0) {
+                        if (participant.getPoints() >= 0) {
                             currentNode.data.setPoints(currentNode.data.getPoints() + participant.getPoints());
                             gasit = true;
                         } else if (participant.getPoints() < 0) {

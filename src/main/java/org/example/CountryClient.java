@@ -68,6 +68,7 @@ public class CountryClient extends Thread {
                             Object response = inputStream.readObject();
                             if (response instanceof List) {
                                 List<String> list = (List<String>) response;
+                                System.out.println("Country" + countryIndex + ":");
                                 for (var i : list) {
                                     System.out.println(i);
                                 }
