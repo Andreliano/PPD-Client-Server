@@ -7,116 +7,105 @@ import java.util.concurrent.locks.ReentrantLock;
 class Node<T> {
     T data;
     Node<T> next;
-    Lock lock;
 
     public Node(T data) {
         this.data = data;
         this.next = null;
-        this.lock = new ReentrantLock();
     }
 }
 
 class MyList<T> {
     private final Node<T> head;
-    private final Node<T> tail;
+    private final Lock lock;
 
     public MyList() {
         head = new Node<>(null);
-        tail = new Node<>(null);
-        head.next = tail;
+        lock = new ReentrantLock();
     }
 
     public Node<T> getHead() {
         return head;
     }
 
-    public Node<T> getTail() {
-        return tail;
+    public Lock getLock() {
+        return lock;
     }
 
     public void insert(T data) {
         Node<T> newNode = new Node<>(data);
-
-        head.lock.lock();
+        lock.lock();
         try {
-            Node<T> current = head;
-            Node<T> next = current.next;
-
-            next.lock.lock();
-            try {
-                current.next = newNode;
-                newNode.next = next;
-            } finally {
-                next.lock.unlock();
-            }
+            newNode.next = head.next;
+            head.next = newNode;
         } finally {
-            head.lock.unlock();
+            lock.unlock();
         }
     }
 
     public void delete(T data) {
-        head.lock.lock();
+        lock.lock();
         try {
             Node<T> current = head;
             Node<T> next = current.next;
 
-            next.lock.lock();
-            try {
-                while (next != tail && !next.data.equals(data)) {
-                    current = next;
-                    next = next.next;
-                    next.lock.lock();
-                    current.lock.unlock();
-                }
+            while (next != null && !next.data.equals(data)) {
+                current = next;
+                next = next.next;
+            }
 
-                if (next != tail) {
-                    current.next = next.next;
-                }
-            } finally {
-                next.lock.unlock();
+            if (next != null) {
+                current.next = next.next;
             }
         } finally {
-            head.lock.unlock();
+            lock.unlock();
         }
     }
 
     public void printList() {
-        Node<T> current = head.next;
-        int nr = 0;
-        while (current != tail) {
-            System.out.println(current.data);
-            current = current.next;
+        lock.lock();
+        try {
+            Node<T> current = head.next;
+            int nr = 0;
+            while (current != null) {
+                nr++;
+                current = current.next;
+            }
+            System.out.println(nr);
+        } finally {
+            lock.unlock();
         }
-        System.out.println();
     }
 
     public void sort(Comparator<T> comparator) {
-        Node<T> current = head.next;
-        Node<T> next;
+        lock.lock();
+        try {
+            boolean swapped;
+            Node<T> current;
+            Node<T> next = null;
 
-        while (current != tail) {
-            next = current.next;
+            do {
+                swapped = false;
+                current = head;
 
-            while (next != tail) {
-                current.lock.lock();
-                next.lock.lock();
+                while (current.next != next) {
+                    Node<T> currentNext = current.next;
+                    Node<T> currentNextNext = currentNext.next;
 
-                try {
-                    if (comparator.compare(current.data, next.data) < 0) {
-                        // Swap the data of current and next nodes
-                        T temp = current.data;
-                        current.data = next.data;
-                        next.data = temp;
+                    if (currentNextNext!=null && comparator.compare(currentNext.data, currentNextNext.data) > 0) {
+                        // Swap the data of currentNext and currentNextNext nodes
+                        T temp = currentNext.data;
+                        currentNext.data = currentNextNext.data;
+                        currentNextNext.data = temp;
+                        swapped = true;
                     }
-                } finally {
-                    next.lock.unlock();
-                    current.lock.unlock();
+
+                    current = currentNext;
                 }
 
-                next = next.next;
-            }
-
-            current = current.next;
+                next = current;
+            } while (swapped);
+        } finally {
+            lock.unlock();
         }
     }
 }

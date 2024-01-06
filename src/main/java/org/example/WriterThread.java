@@ -1,10 +1,11 @@
 package org.example;
 
+
 import java.util.Objects;
 import java.util.Set;
 
 public class WriterThread extends Thread {
-    
+
 
     public void run() {
         Participant participant = null;
@@ -17,20 +18,15 @@ public class WriterThread extends Thread {
         while (Constants.myBlockingQueue.size() > 0) {
             Node<Participant> currentNode = Constants.ranking.getHead().next;
             boolean gasit = false;
-            while (currentNode != Constants.ranking.getTail()) {
+            while (currentNode != null) {
                 if (Objects.equals(currentNode.data.getIdParticipant(), participant.getIdParticipant())) {
-                    currentNode.lock.lock();
-                    try {
-                        if (participant.getPoints() >= 0) {
-                            currentNode.data.setPoints(currentNode.data.getPoints() + participant.getPoints());
-                            gasit = true;
-                        } else if (participant.getPoints() < 0) {
-                            Constants.ranking.delete(currentNode.data);
-                            Constants.disqualifiedCompetitors.add(participant.getIdParticipant());
-                            gasit = true;
-                        }
-                    } finally {
-                        currentNode.lock.unlock();
+                    if (participant.getPoints() >= 0) {
+                        currentNode.data.setPoints(currentNode.data.getPoints() + participant.getPoints());
+                        gasit = true;
+                    } else if (participant.getPoints() < 0) {
+                        Constants.ranking.delete(currentNode.data);
+                        Constants.disqualifiedCompetitors.add(participant.getIdParticipant());
+                        gasit = true;
                     }
                     break;
                 }
@@ -42,7 +38,7 @@ public class WriterThread extends Thread {
             }
             try {
                 participant = Constants.myBlockingQueue.poll();
-//                System.out.println(participant);
+                System.out.println(Constants.myBlockingQueue.size());
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

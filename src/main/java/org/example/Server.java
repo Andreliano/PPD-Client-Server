@@ -84,6 +84,7 @@ public class Server {
                         }
                     }
                     if (Constants.counter.get() == 4) {
+                        Constants.ranking.sort(getComparator());
                         writeToFile(Constants.ranking, Constants.ParticipantRankingFile);
                         writeToFile(Constants.serializableSubList, Constants.CountryRankingFile);
                         executorReaders.shutdown();
@@ -115,7 +116,7 @@ public class Server {
         Map<Integer, Integer> countryRating = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
             Node<Participant> currentNode = Constants.ranking.getHead().next;
-            while (currentNode != Constants.ranking.getTail()) {
+            while (currentNode != null) {
                 if (currentNode.data.getIdCountry() == i) {
                     if (countryRating.get(i) == null) {
                         countryRating.put(i, currentNode.data.getPoints());
@@ -136,7 +137,7 @@ public class Server {
             FileWriter fileWriter = new FileWriter(fileName);
             Node<Participant> currentNode = myList.getHead().next;
 
-            while (currentNode != myList.getTail()) {
+            while (currentNode != null) {
                 fileWriter.write(currentNode.data.toString() + "\n");
                 currentNode = currentNode.next;
             }
