@@ -4,16 +4,6 @@ import java.util.Comparator;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-class Node<T> {
-    T data;
-    Node<T> next;
-
-    public Node(T data) {
-        this.data = data;
-        this.next = null;
-    }
-}
-
 class MyList<T> {
     private final Node<T> head;
     private final Lock lock;
