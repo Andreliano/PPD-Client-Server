@@ -17,7 +17,7 @@ public class Constants {
     public static List<Participant> participantsList = new ArrayList<>();
     public static MyBlockingQueue myBlockingQueue = new MyBlockingQueue();
 
-    public static MyList<Participant> ranking = new MyList<>();
+    public static SharedLinkedList ranking = new SharedLinkedList();
 
     public static Set<Long> disqualifiedCompetitors = new HashSet<>();
 

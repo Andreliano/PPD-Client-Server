@@ -16,12 +16,12 @@ public class WriterThread extends Thread {
         }
 
         while (Constants.myBlockingQueue.size() > 0) {
-            Node<Participant> currentNode = Constants.ranking.getHead().next;
+            Node<Tuple<Long, Long, Integer>> currentNode = Constants.ranking.getHead().next;
             boolean gasit = false;
             while (currentNode != null) {
-                if (Objects.equals(currentNode.data.getIdParticipant(), participant.getIdParticipant())) {
+                if (Objects.equals(currentNode.data.getId(), participant.getIdParticipant())) {
                     if (participant.getPoints() >= 0) {
-                        currentNode.data.setPoints(currentNode.data.getPoints() + participant.getPoints());
+                        currentNode.data.setScore(currentNode.data.getScore() + participant.getPoints());
                         gasit = true;
                     } else if (participant.getPoints() < 0) {
                         Constants.ranking.delete(currentNode.data);
@@ -34,7 +34,7 @@ public class WriterThread extends Thread {
             }
 
             if (!Constants.disqualifiedCompetitors.contains(participant.getIdParticipant()) && !gasit) {
-                Constants.ranking.insert(participant);
+                Constants.ranking.insert(new Tuple<>(participant.getIdCountry(), participant.getIdParticipant(), participant.getPoints()));
             }
             try {
                 participant = Constants.myBlockingQueue.poll();

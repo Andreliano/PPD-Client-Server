@@ -1,9 +1,6 @@
 package org.example;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -84,8 +81,8 @@ public class Server {
                         }
                     }
                     if (Constants.counter.get() == 4) {
-                        Constants.ranking.sort(getComparator());
-                        writeToFile(Constants.ranking, Constants.ParticipantRankingFile);
+                        Constants.ranking.mergeSort();
+                        writeFinalRankingToFile(Constants.ranking, Constants.ParticipantRankingFile);
                         writeToFile(Constants.serializableSubList, Constants.CountryRankingFile);
                         executorReaders.shutdown();
                         for (int i = 0; i < pWriters; i++) {
@@ -115,13 +112,13 @@ public class Server {
     private static Map<Integer, Integer> calculateCountryRating() {
         Map<Integer, Integer> countryRating = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
-            Node<Participant> currentNode = Constants.ranking.getHead().next;
+            Node<Tuple<Long, Long, Integer>> currentNode = Constants.ranking.getHead().next;
             while (currentNode != null) {
-                if (currentNode.data.getIdCountry() == i) {
+                if (currentNode.data.getCountry() == i) {
                     if (countryRating.get(i) == null) {
-                        countryRating.put(i, currentNode.data.getPoints());
+                        countryRating.put(i, currentNode.data.getScore());
                     } else {
-                        int updatedPoints = countryRating.get(i) + currentNode.data.getPoints();
+                        int updatedPoints = countryRating.get(i) + currentNode.data.getScore();
                         countryRating.put(i, updatedPoints);
                     }
                 }
@@ -132,21 +129,23 @@ public class Server {
         return countryRating;
     }
 
-    private static void writeToFile(MyList<Participant> myList, String fileName) {
-        try {
-            FileWriter fileWriter = new FileWriter(fileName);
-            Node<Participant> currentNode = myList.getHead().next;
+        private static void writeFinalRankingToFile(SharedLinkedList ranking, String fileName) {
+            try {
+                File file = new File(fileName);
+                FileWriter fileWriter = new FileWriter(file);
+                BufferedWriter writer = new BufferedWriter(fileWriter);
 
-            while (currentNode != null) {
-                fileWriter.write(currentNode.data.toString() + "\n");
-                currentNode = currentNode.next;
+                Node<Tuple<Long, Long, Integer>> head = Constants.ranking.getHead().getNext();
+                while (head.getNext() != null) {
+                    writer.write(head.data.getId() + " " + head.data.getScore() + " " + head.data.getCountry());
+                    writer.newLine();
+                    head = head.getNext();
+                }
+
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-
-            fileWriter.close();
-        } catch (IOException e) {
-            System.out.println("Eroare la crearea fișierului " + fileName);
-            e.printStackTrace();
-        }
     }
     private static void writeToFile(List<String> myList, String fileName) {
         try {
